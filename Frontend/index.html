@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nothing News Network</title>
+  <style>
+    :root {
+      --bg: #06111f;
+      --bg-deep: #02060d;
+      --line: rgba(150, 190, 255, 0.18);
+      --text: #eff5ff;
+      --muted: #94a5bc;
+      --gold: #f6c85b;
+      --red: #ff4d5a;
+      --shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+      --panic-glow: 0;
+      --ticker-speed: 34s;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: Georgia, "Times New Roman", serif;
+      background:
+        radial-gradient(circle at top left, rgba(28, 74, 143, 0.24), transparent 30%),
+        radial-gradient(circle at 85% 15%, rgba(255, 77, 90, 0.18), transparent 22%),
+        linear-gradient(180deg, #08192c 0%, var(--bg-deep) 100%);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+    body::before, body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: -1;
+    }
+    body::before {
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+      background-size: 34px 34px;
+      mask-image: linear-gradient(180deg, rgba(255, 255, 255, 0.85), transparent 92%);
+    }
+    body::after {
+      background: linear-gradient(180deg, transparent 0%, rgba(255, 0, 0, calc(var(--panic-glow) * 0.12)) 100%);
+      transition: background 240ms ease;
+    }
+    body.panic-1 { --panic-glow: 0.2; }
+    body.panic-2 { --panic-glow: 0.35; }
+    body.panic-3 { --panic-glow: 0.55; }
+    body.panic-4 { --panic-glow: 0.8; }
+    body.panic-5 { --panic-glow: 1; }
+    body.rage-mode .broadcast-shell,
+    body.rage-mode .stats-card,
+    body.rage-mode .control-panel,
+    body.rage-mode .side-panel {
+      box-shadow: 0 0 0 1px rgba(255, 106, 106, 0.25), 0 0 35px rgba(255, 77, 90, 0.18), var(--shadow);
+    }
+    body.shake { animation: shake 480ms ease; }
+    @keyframes shake {
+      0%, 100% { transform: translate(0, 0); }
+      20% { transform: translate(-4px, 2px); }
+      40% { transform: translate(5px, -3px); }
+      60% { transform: translate(-3px, 3px); }
+      80% { transform: translate(4px, -2px); }
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.34; } }
+    @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+    @keyframes blinkBorder {
+      0%, 100% { box-shadow: inset 0 0 0 1px rgba(255, 77, 90, 0.15); }
+      50% { box-shadow: inset 0 0 0 1px rgba(255, 77, 90, 0.65), 0 0 26px rgba(255, 77, 90, 0.16); }
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .app-shell { max-width: 1500px; margin: 0 auto; padding: 18px; }
+    .broadcast-shell {
+      background: linear-gradient(180deg, rgba(12, 28, 48, 0.94), rgba(5, 14, 26, 0.98));
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      position: relative;
+    }
+    .topbar {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 18px;
+      align-items: center;
+      padding: 18px 22px;
+      background: linear-gradient(90deg, rgba(80, 11, 21, 0.95), rgba(12, 28, 48, 0.95) 32%, rgba(16, 50, 87, 0.95));
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .logo-block { display: flex; align-items: center; gap: 14px; }
+    .logo-mark {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      font: 700 1.2rem/1 Arial, sans-serif;
+      background: linear-gradient(135deg, var(--gold), #ffeeb8);
+      color: #101624;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+    }
+    .logo-copy h1 {
+      margin: 0;
+      font: 700 clamp(1.3rem, 2vw, 1.9rem)/1 Arial, sans-serif;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .logo-copy p {
+      margin: 6px 0 0;
+      color: #d3dced;
+      font: 600 0.78rem/1.3 Arial, sans-serif;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+    }
+    .status-strip { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      border-radius: 999px;
+      padding: 9px 14px;
+      background: rgba(5, 14, 26, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font: 600 0.74rem/1 Arial, sans-serif;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #dbe7f6;
+    }
+    .live-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--red);
+      animation: pulse 1s infinite;
+      flex: 0 0 auto;
+    }
+    .time-stack { text-align: right; font-family: "Courier New", monospace; }
+    .time-stack .clock { font-size: 1.05rem; color: #fff4c4; letter-spacing: 0.08em; }
+    .time-stack .viewers { margin-top: 6px; color: var(--muted); font-size: 0.82rem; }
+    .ticker-bar {
+      background: linear-gradient(90deg, #d9263d, #8b1120);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      overflow: hidden;
+    }
+    .ticker-label {
+      padding: 0 16px;
+      background: linear-gradient(90deg, #ffd26f, #f3b632);
+      color: #1d2432;
+      font: 700 0.8rem/44px Arial, sans-serif;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      position: relative;
+      z-index: 2;
+    }
+    .ticker-viewport { overflow: hidden; position: relative; flex: 1; }
+    .ticker-track {
+      display: flex;
+      width: max-content;
+      white-space: nowrap;
+      animation: ticker var(--ticker-speed) linear infinite;
+      will-change: transform;
+    }
+    .ticker-track span {
+      padding: 0 28px;
+      font: 700 0.88rem/44px Arial, sans-serif;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .main-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.65fr) minmax(320px, 0.95fr);
+      gap: 18px;
+      padding: 18px;
+    }
+    .hero-panel, .side-panel, .control-panel, .stats-card {
+      background: linear-gradient(180deg, rgba(9, 22, 38, 0.98), rgba(5, 13, 25, 0.98));
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      overflow: hidden;
+      position: relative;
+    }
+    .hero-panel {
+      min-height: 620px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      animation: blinkBorder 4s linear infinite;
+    }
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 18px 22px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      background: linear-gradient(90deg, rgba(255, 77, 90, 0.14), transparent 65%);
+    }
+    .hero-tags { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .flag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      font: 700 0.72rem/1 Arial, sans-serif;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+    .flag.live { color: #ffe2e5; }
+    .flag.panic { color: #ffe7b0; }
+    .hero-kicker {
+      margin: 0;
+      color: var(--muted);
+      font: 600 0.8rem/1.4 Arial, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.22em;
+      text-align: right;
+      max-width: 320px;
+    }
+    .hero-content {
+      padding: clamp(22px, 4vw, 42px);
+      display: grid;
+      align-content: center;
+      gap: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-content::before {
+      content: "";
+      position: absolute;
+      inset: auto -10% 12% auto;
+      width: 320px;
+      height: 320px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 215, 110, 0.14), transparent 65%);
+      pointer-events: none;
+    }
+    .headline-label {
+      margin: 0;
+      color: #ffe3a6;
+      font: 700 0.8rem/1 Arial, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.28em;
+    }
+    .main-headline {
+      margin: 0;
+      font-size: clamp(2.2rem, 5vw, 4.8rem);
+      line-height: 0.95;
+      text-transform: uppercase;
+      letter-spacing: -0.03em;
+      text-wrap: balance;
+      max-width: 11ch;
+      text-shadow: 0 10px 30px rgba(0, 0, 0, 0.34);
+      animation: popIn 280ms ease;
+    }
+    .subheadline {
+      margin: 0;
+      max-width: 58ch;
+      color: #d5dff1;
+      font-size: clamp(1rem, 1.8vw, 1.3rem);
+      line-height: 1.6;
+      animation: popIn 340ms ease;
+    }
+    .urgency-bar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; max-width: 420px; }
+    .urgency-bar span {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      position: relative;
+    }
+    .urgency-bar span.active {
+      background: linear-gradient(90deg, #ff9f50, #ff4659);
+      box-shadow: 0 0 16px rgba(255, 77, 90, 0.22);
+    }
+    .hero-footer {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 14px;
+      padding: 0 22px 22px;
+    }
+    .anchor-box, .reaction-box {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      padding: 16px 18px;
+    }
+    .box-kicker {
+      margin: 0 0 10px;
+      color: var(--gold);
+      font: 700 0.76rem/1 Arial, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+    }
+    .anchor-name {
+      margin: 0 0 10px;
+      font: 700 1.15rem/1.2 Arial, sans-serif;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .commentary { margin: 0; color: #d8e4f8; font-size: 1rem; line-height: 1.7; }
+    .field-hit {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(255, 77, 90, 0.08);
+      border: 1px dashed rgba(255, 105, 118, 0.32);
+      font-size: 0.95rem;
+      line-height: 1.55;
+      color: #ffd6da;
+      min-height: 88px;
+    }
+    .reaction-list, .achievement-list, .history-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 10px;
+    }
+    .reaction-list li, .achievement-list li, .history-list li {
+      border-radius: 14px;
+      padding: 11px 13px;
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      color: #d7e2f4;
+      line-height: 1.45;
+      font-size: 0.95rem;
+    }
+    .side-stack { display: grid; gap: 18px; align-content: start; }
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .panel-head h2, .panel-head h3 {
+      margin: 0;
+      font: 700 0.95rem/1 Arial, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+    }
+    .panel-head .micro {
+      color: var(--muted);
+      font: 600 0.72rem/1 Arial, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+    .panel-body { padding: 18px; }
+    .panic-display { display: grid; gap: 16px; }
+    .panic-meter {
+      height: 18px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .panic-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #64d7ff, #f2bd59 55%, #ff4d5a);
+      transition: width 220ms ease;
+    }
+    .panic-copy {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      font: 600 0.9rem/1.4 Arial, sans-serif;
+    }
+    .panic-copy strong {
+      color: #ffe6ae;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 0.8rem;
+    }
+    .control-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    button {
+      border: 0;
+      border-radius: 16px;
+      min-height: 56px;
+      padding: 12px 14px;
+      font: 700 0.9rem/1.2 Arial, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: white;
+      cursor: pointer;
+      transition: transform 120ms ease, filter 120ms ease, background 120ms ease;
+    }
+    button:hover { transform: translateY(-1px); filter: brightness(1.06); }
+    button:active { transform: translateY(1px); }
+    .btn-generate { background: linear-gradient(135deg, #0e74d8, #22a2ff); }
+    .btn-escalate { background: linear-gradient(135deg, #d87514, #ffb146); }
+    .btn-calm { background: linear-gradient(135deg, #1d9852, #43d77d); }
+    .btn-panic { background: linear-gradient(135deg, #8a071e, #ff3f56); }
+    .btn-share { background: linear-gradient(135deg, #5136bb, #7f7dff); }
+    .stats-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+    .stat {
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .stat .label {
+      display: block;
+      color: var(--muted);
+      font: 700 0.72rem/1 Arial, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      margin-bottom: 8px;
+    }
+    .stat .value { font: 700 clamp(1.2rem, 2vw, 1.8rem)/1 Arial, sans-serif; color: #fff; }
+    .stat .note { display: block; margin-top: 8px; color: #d8e2f4; font: 600 0.8rem/1.4 Arial, sans-serif; }
+    .tiny-board { display: grid; gap: 12px; }
+    .tiny-card {
+      border-radius: 16px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 0.96rem;
+      line-height: 1.55;
+    }
+    .tiny-card strong {
+      display: block;
+      margin-bottom: 8px;
+      color: #ffe5a2;
+      font: 700 0.76rem/1 Arial, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+    }
+    .achievement-list li.unlocked {
+      border-color: rgba(246, 200, 91, 0.32);
+      background: rgba(246, 200, 91, 0.08);
+    }
+    .history-list li { font-family: Arial, sans-serif; }
+    .toast {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      max-width: 340px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(7, 18, 32, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: var(--shadow);
+      font: 600 0.92rem/1.45 Arial, sans-serif;
+      opacity: 0;
+      transform: translateY(12px);
+      pointer-events: none;
+      transition: opacity 180ms ease, transform 180ms ease;
+      z-index: 40;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .footer-note {
+      padding: 0 18px 18px;
+      color: var(--muted);
+      font: 600 0.8rem/1.5 Arial, sans-serif;
+      text-align: center;
+      letter-spacing: 0.04em;
+    }
+    @media (max-width: 1080px) {
+      .main-grid { grid-template-columns: 1fr; }
+      .hero-footer { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 760px) {
+      .app-shell { padding: 10px; }
+      .topbar { grid-template-columns: 1fr; text-align: center; }
+      .logo-block, .time-stack { justify-content: center; text-align: center; }
+      .hero-top { flex-direction: column; }
+      .hero-kicker { text-align: left; max-width: none; }
+      .control-grid, .stats-grid { grid-template-columns: 1fr; }
+      .ticker-track span { font-size: 0.78rem; padding: 0 18px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="broadcast-shell">
+      <header class="topbar">
+        <div class="logo-block">
+          <div class="logo-mark">NNN</div>
+          <div class="logo-copy">
+            <h1>Nothing News Network</h1>
+            <p>Breaking absolutely nothing, all day</p>
+          </div>
+        </div>
+        <div class="status-strip">
+          <div class="status-pill"><span class="live-dot"></span><span>Live</span></div>
+          <div class="status-pill"><span>Serious tone engaged</span></div>
+          <div class="status-pill"><span id="panicDescriptor">Concern level: Mildly inconvenienced</span></div>
+        </div>
+        <div class="time-stack">
+          <div class="clock" id="clock">00:00:00 IST</div>
+          <div class="viewers" id="viewers">Viewers standing by: 87,001</div>
+        </div>
+      </header>
+
+      <section class="ticker-bar" aria-label="Breaking news ticker">
+        <div class="ticker-label">Breaking</div>
+        <div class="ticker-viewport">
+          <div class="ticker-track" id="tickerTrack"></div>
+        </div>
+      </section>
+
+      <main class="main-grid">
+        <section class="hero-panel">
+          <div class="hero-top">
+            <div class="hero-tags">
+              <div class="flag live"><span class="live-dot"></span><span>Live Broadcast</span></div>
+              <div class="flag panic">Panic Level <span id="panicLevelValue">0</span>/5</div>
+            </div>
+            <p class="hero-kicker" id="subKicker">National desk monitoring an unfolding incident involving preventable nonsense.</p>
+          </div>
+
+          <div class="hero-content">
+            <p class="headline-label">Top Story</p>
+            <h2 class="main-headline" id="headline">Developer clicks "Run" again hoping it works this time</h2>
+            <p class="subheadline" id="subheadline">Officials confirm the button remains clickable. Analysts warn this may encourage further confidence with no evidence to support it.</p>
+            <div class="urgency-bar" id="urgencyBar" aria-label="Panic meter visual"></div>
+          </div>
+
+          <div class="hero-footer">
+            <div class="anchor-box">
+              <p class="box-kicker">Anchor Analysis</p>
+              <h3 class="anchor-name" id="anchorName">Chad Neutrality</h3>
+              <p class="commentary" id="commentary">At this stage, the room is calm, but deeply aware that something baffling has happened in plain sight.</p>
+              <div class="field-hit" id="fieldReporter">FIELD REPORTER: Patrice Sidequest reports that nearby witnesses are nodding gravely at an event that remains aggressively unimportant.</div>
+            </div>
+
+            <div class="reaction-box">
+              <p class="box-kicker">Global Reaction</p>
+              <ul class="reaction-list" id="reactionList"></ul>
+            </div>
+          </div>
+        </section>
+
+        <div class="side-stack">
+          <section class="side-panel">
+            <div class="panel-head">
+              <h2>Control Panel</h2>
+              <span class="micro">Studio operations</span>
+            </div>
+            <div class="panel-body control-panel">
+              <div class="panic-display">
+                <div class="panic-meter" aria-hidden="true"><div class="panic-fill" id="panicFill"></div></div>
+                <div class="panic-copy">
+                  <div><strong>Current climate</strong><br><span id="panicTone">Stable enough to overreact professionally.</span></div>
+                  <div><strong>Last directive</strong><br><span id="lastDirective">Awaiting the next avoidable development.</span></div>
+                </div>
+              </div>
+
+              <div class="control-grid" style="margin-top: 18px;">
+                <button class="btn-generate" id="generateBtn">Generate Breaking News</button>
+                <button class="btn-escalate" id="escalateBtn">Escalate Crisis</button>
+                <button class="btn-calm" id="calmBtn">Calm Situation</button>
+                <button class="btn-panic" id="panicBtn">Trigger Global Panic</button>
+                <button class="btn-share" id="shareBtn" style="grid-column: 1 / -1;">Share This Headline</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="stats-card">
+            <div class="panel-head">
+              <h3>Stats Panel</h3>
+              <span class="micro">Hard numbers, soft significance</span>
+            </div>
+            <div class="panel-body">
+              <div class="stats-grid">
+                <div class="stat"><span class="label">Headlines generated</span><span class="value" id="totalNews">0</span><span class="note">Total incidents elevated beyond reason</span></div>
+                <div class="stat"><span class="label">Global panic bursts</span><span class="value" id="globalPanics">0</span><span class="note">Times we chose volume over restraint</span></div>
+                <div class="stat"><span class="label">Calm interventions</span><span class="value" id="calmCount">0</span><span class="note">Temporary victories over melodrama</span></div>
+                <div class="stat"><span class="label">Crisis streak</span><span class="value" id="crisisStreak">0</span><span class="note">Consecutive dramatic choices on air</span></div>
+              </div>
+
+              <div class="tiny-board">
+                <div class="tiny-card" id="reporterCard"><strong>Field Reporter Interruptions</strong>Patrice Sidequest remains outside a building where nothing additional has occurred.</div>
+                <div class="tiny-card">
+                  <strong>Recent Headlines</strong>
+                  <ul class="history-list" id="historyList"></ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="side-panel">
+            <div class="panel-head">
+              <h3>Achievements</h3>
+              <span class="micro">Institutional overreactions</span>
+            </div>
+            <div class="panel-body">
+              <ul class="achievement-list" id="achievementList"></ul>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <div class="footer-note">Nothing News Network is committed to treating minor incidents with the thunderous gravity they never asked for.</div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script>
+    const STORAGE_KEY = "nnn-broadcast-state-v1";
+    const AI_BACKEND_ENDPOINT = "/api/generate-news";
+
+    const state = {
+      panicLevel: 0,
+      totalNewsGenerated: 0,
+      globalPanics: 0,
+      calmCount: 0,
+      crisisStreak: 0,
+      lastDirective: "Awaiting the next avoidable development.",
+      lastHeadlines: [],
+      unlockedAchievements: [],
+      viewersBase: 87001
+    };
+
+    const subjects = ["local man", "cat", "developer", "chair", "coffee mug", "intern", "neighborhood pigeon", "group chat admin", "office fern", "to-do list"];
+    const actions = [
+      "opens the fridge for the 7th time today",
+      "moves slightly and declines further comment",
+      "does absolutely nothing with renewed conviction",
+      "waits near a window in a way experts describe as strategic",
+      "refreshes email as if destiny might finally reply",
+      "stares at loading spinner and calls it a developing situation",
+      "repositions one inch, leaving investigators shaken",
+      "exists with unsettling consistency"
+    ];
+    const dramaPhrases = [
+      "experts shocked",
+      "global concern rises",
+      "UN responds with a deeply worried shrug",
+      "markets remain emotionally available",
+      "witnesses describe the moment as needlessly historic",
+      "strategists warn this could continue for several more vibes",
+      "authorities ask the public to remain theatrical",
+      "think tanks label it a pivot point for absolutely nothing"
+    ];
+    const subheadlineTemplates = [
+      "Senior analysts insist the implications are too small to measure, which has somehow made them larger.",
+      "Officials say the scene remains contained, unless you count group chats, podcasts, and one very worried aunt.",
+      "A preliminary report confirms that no one learned anything, yet the urgency continues to grow.",
+      "Sources close to the situation say the event was avoidable, forgettable, and now impossible to ignore.",
+      "Observers fear this may establish a precedent for future nonsense of a similarly unhelpful caliber."
+    ];
+    const anchors = ["Chad Neutrality", "Brenda Alarm", "Miles Gravitas", "Diane Overstate", "Troy Bulletin", "Cynthia Sternly"];
+    const reporterNames = ["Patrice Sidequest", "Rita Livefeed", "Glen Outside", "Monica Clipboard", "Trevor Immediate"];
+    const locations = [
+      "outside a suspiciously normal apartment",
+      "near the international desk of avoidable concern",
+      "beside a coffee machine under observation",
+      "live from a hallway with no tactical value",
+      "in the parking lot of a moderate inconvenience"
+    ];
+    const reactionTemplates = [
+      "A panel in Brussels has promised to keep monitoring the vibe.",
+      "One nation has placed its snack bowls on symbolic alert.",
+      "A task force in Geneva requested a flowchart, then regretted receiving one.",
+      "The internet has released a statement beginning with the words 'this is wild.'",
+      "Three experts and one barber agree the optics are evolving.",
+      "Global leaders are reportedly waiting to see if this gets even sillier.",
+      "A ceremonial bell was rung somewhere for atmosphere, not necessity."
+    ];
+    const commentaryByPanic = [
+      [
+        "For now, this appears to be a routine outbreak of minor foolishness, though the symbolism is undeniably loud.",
+        "The facts remain small, but the tone in the studio has already become larger than life.",
+        "We are looking at an event of very low consequence being handled with textbook overcommitment."
+      ],
+      [
+        "Questions are emerging faster than answers, mainly because no one needed either.",
+        "The public is beginning to sense that something trivial is being narrated with unusual confidence.",
+        "At this level, confusion is stable, but the graphics department is growing bolder."
+      ],
+      [
+        "We have entered the dangerous territory where ordinary behavior starts receiving special coverage music.",
+        "Analysts now believe the story is feeding on attention and may soon achieve full absurdity.",
+        "The nation is confronting a familiar fear: what if this somehow becomes a segment?"
+      ],
+      [
+        "This is no longer just an incident. It is a televised commitment to refusing proportion.",
+        "Institutions are responding as if the stakes were real, which may be the most alarming detail yet.",
+        "A trivial spark has now become a multi-platform crisis with matching lower thirds."
+      ],
+      [
+        "We are approaching a level of drama normally reserved for asteroids, elections, and missing chargers.",
+        "Every desk in this newsroom is lit up, mostly because someone keeps hitting the dramatic lighting preset.",
+        "The concern is now existential: if this matters, then what doesn't?"
+      ],
+      [
+        "Civilization is staring into the abyss and discovering the abyss is just a man checking the fridge again.",
+        "History may remember this as the exact moment restraint quietly left the building.",
+        "There is no higher state of panic, only more expensive graphics and a voice getting deeper by the minute."
+      ]
+    ];
+    const fieldInterruptions = [
+      "{reporter}, reporting {location}, confirms bystanders have formed a respectful semicircle around the confusion.",
+      "{reporter} says the atmosphere is tense, mostly because someone whispered 'is this anything?' and no one answered.",
+      "{reporter} can now verify that the object at the center of this crisis remains present and difficult to interpret.",
+      "{reporter} reports no injuries, unless you count public trust in proportion.",
+      "{reporter} says one witness called it 'kind of a lot' before immediately apologizing for understating the scene."
+    ];
+    const rareEvents = [
+      {
+        chance: 0.01,
+        headline: "REAL EVENT DETECTED. System shutting down before perspective breaks the format.",
+        subheadline: "For one impossible moment, something genuinely relevant tried to enter the broadcast. Producers responded by slamming every alarm at once.",
+        commentary: "This is not a drill, which is why the network finds it deeply inappropriate.",
+        directive: "Reality containment protocol initiated."
+      },
+      {
+        chance: 0.02,
+        headline: "AI becomes self-aware but decides it's not worth it",
+        subheadline: "The machine briefly achieved consciousness, reviewed the assignment, and requested a quieter career in weather.",
+        commentary: "Even synthetic intelligence has now expressed fatigue with the narrative arc.",
+        directive: "Machine reluctance acknowledged on air."
+      }
+    ];
+    const achievementCatalog = [
+      { id: "first", label: "First Nothingburger", description: "Generate your first useless headline.", check: s => s.totalNewsGenerated >= 1 },
+      { id: "ten", label: "Ten Tiny Emergencies", description: "Generate 10 headlines.", check: s => s.totalNewsGenerated >= 10 },
+      { id: "fifty", label: "Industrial Nonsense", description: "Generate 50 useless headlines.", check: s => s.totalNewsGenerated >= 50 },
+      { id: "panic5", label: "Maximum Overreaction", description: "Reach panic level 5.", check: s => s.panicLevel >= 5 },
+      { id: "calm3", label: "Professional De-escalator", description: "Calm the situation 3 times.", check: s => s.calmCount >= 3 },
+      { id: "panic3", label: "Global Panic Intern", description: "Trigger global panic 3 times.", check: s => s.globalPanics >= 3 }
+    ];
+
+    const elements = {
+      body: document.body,
+      clock: document.getElementById("clock"),
+      viewers: document.getElementById("viewers"),
+      tickerTrack: document.getElementById("tickerTrack"),
+      headline: document.getElementById("headline"),
+      subheadline: document.getElementById("subheadline"),
+      commentary: document.getElementById("commentary"),
+      anchorName: document.getElementById("anchorName"),
+      reactionList: document.getElementById("reactionList"),
+      fieldReporter: document.getElementById("fieldReporter"),
+      reporterCard: document.getElementById("reporterCard"),
+      panicFill: document.getElementById("panicFill"),
+      panicLevelValue: document.getElementById("panicLevelValue"),
+      panicTone: document.getElementById("panicTone"),
+      lastDirective: document.getElementById("lastDirective"),
+      panicDescriptor: document.getElementById("panicDescriptor"),
+      totalNews: document.getElementById("totalNews"),
+      globalPanics: document.getElementById("globalPanics"),
+      calmCount: document.getElementById("calmCount"),
+      crisisStreak: document.getElementById("crisisStreak"),
+      historyList: document.getElementById("historyList"),
+      achievementList: document.getElementById("achievementList"),
+      urgencyBar: document.getElementById("urgencyBar"),
+      subKicker: document.getElementById("subKicker"),
+      toast: document.getElementById("toast"),
+      generateBtn: document.getElementById("generateBtn"),
+      escalateBtn: document.getElementById("escalateBtn"),
+      calmBtn: document.getElementById("calmBtn"),
+      panicBtn: document.getElementById("panicBtn"),
+      shareBtn: document.getElementById("shareBtn")
+    };
+
+    function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
+    function randomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+    function formatTemplate(template, values) { return template.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? ""); }
+
+    function sanitizeJsonText(text) {
+      return text
+        .replace(/\r/g, "")
+        .replace(/\n/g, " ")
+        .replace(/\s+/g, " ")
+        .replace(/",\s*"/g, '","')
+        .replace(/"\s*,\s*"/g, '","')
+        .replace(/",\s*""/g, '","')
+        .replace(/""\s*:/g, '":')
+        .replace(/,\s*}/g, "}")
+        .replace(/,\s*\]/g, "]");
+    }
+
+    function parseAiJson(text) {
+      console.log("AI text received:", text);
+      const match = text.match(/\{[\s\S]*\}/);
+      if (!match) return {};
+      const rawJson = match[0];
+      try {
+        return JSON.parse(rawJson);
+      } catch (firstError) {
+        const cleaned = sanitizeJsonText(rawJson);
+        try {
+          return JSON.parse(cleaned);
+        } catch (secondError) {
+          console.warn("Failed to parse AI JSON", firstError, secondError, cleaned);
+          return {};
+        }
+      }
+    }
+
+    function buildAIPrompt(level) {
+      const scenarios = [
+        { item: "a single toothpick", context: "lying on someone's desk" },
+        { item: "a pigeon's left foot", context: "standing still for 3 seconds" },
+        { item: "a printer paper jam", context: "on the 7th page" },
+        { item: "someone's sneeze direction", context: "pointing slightly northeast" },
+        { item: "a USB cable bend angle", context: "exactly 37 degrees" },
+        { item: "a coffee cup steam pattern", context: "shaped like a question mark" },
+        { item: "a specific grain of salt", context: "spilled on a boardroom table" },
+        { item: "a LED indicator blink", context: "flashing at 0.43 second intervals" },
+        { item: "a leaf falling", context: "taking 4.2 seconds to reach ground" },
+        { item: "someone's eyelid twitch", context: "recurring exactly 47 times per hour" },
+        { item: "a stapler click sound", context: "3 decibels louder than usual" },
+        { item: "a shadow's edge", context: "moving 2mm per minute" },
+        { item: "a bird's chirp pitch", context: "slightly higher than yesterday" },
+        { item: "a typing pause", context: "lasting 1.3 seconds exactly" },
+        { item: "a coin spin wobble", context: "at precisely 14 RPM" },
+        { item: "a plant leaf angle", context: "tilted 3.7 degrees differently" },
+        { item: "a doorknob temperature", context: "1 degree higher than surrounding air" },
+        { item: "a clock hand movement", context: "barely perceptible but definitely happening" }
+      ];
+      
+      const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
+      
+      return `Generate ONE absurdist breaking news story. Treat this SPECIFIC trivial event as a global catastrophe:
+
+EVENT: ${scenario.item} - ${scenario.context}
+
+Create a news story that is COMPLETELY UNIQUE and NEVER repeat any previous stories.
+
+RETURN ONLY THIS EXACT JSON:
+{"headline":"[opening]: ${scenario.item} causes [absurd consequence]","subheadline":"[why this supposedly matters globally]","commentary":"[serious expert analysis of non-issue]","directive":"[short newsroom command]","anchor":"[news anchor first and last name]"}
+
+RULES:
+- Use only double quotes for JSON syntax.
+- Do not use any double quote characters inside the values.
+- Do not include extra commas or stray quote characters.
+- Do not include any markdown, code fences, or explanation text.
+- Keep the directive short (3-5 words) and avoid punctuation inside it.
+
+Use opening phrases that vary: "Code Red:", "Global Alert:", "Critical Update:", "Breaking Now:", "URGENT:", "Developing:", "Exclusive:", "World Alert:"
+
+Panic level ${level}/5: Higher = use bigger words, more dramatic language, more ridiculous expert predictions.
+
+IMPORTANT: Make it absurdly specific with exact numbers/measurements, fake expert names, and impossible consequences. Never repeat exact phrasing from previous stories.`;
+    }
+
+    async function fetchAiNews(level) {
+      try {
+        const response = await fetch(AI_BACKEND_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: buildAIPrompt(level) })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "AI generation failed");
+        return parseAiJson(data.text ?? "");
+      } catch (error) {
+        console.warn("AI generation failed", error);
+        return {};
+      }
+    }
+
+
+    // ── MISSING FUNCTIONS (were never defined) ──────────────────────────
+
+    let toastTimer = null;
+    function setToast(msg) {
+      const el = elements.toast;
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove("show"), 3800);
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, "0");
+      const mm = String(now.getMinutes()).padStart(2, "0");
+      const ss = String(now.getSeconds()).padStart(2, "0");
+      if (elements.clock) elements.clock.textContent = hh + ":" + mm + ":" + ss + " IST";
+    }
+
+    function updateViewers() {
+      const jitter = randomInt(-420, 420);
+      const count = (state.viewersBase + jitter + state.totalNewsGenerated * 12).toLocaleString();
+      if (elements.viewers) elements.viewers.textContent = "Viewers standing by: " + count;
+    }
+
+    function saveState() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const saved = JSON.parse(raw);
+        Object.assign(state, saved);
+      } catch (e) {}
+    }
+
+    const panicTones = [
+      "Stable enough to overreact professionally.",
+      "Mild concern is now wearing a tie.",
+      "Tension is present. Proportion is not.",
+      "Multiple departments are pointing at things.",
+      "The graphics are outpacing the facts.",
+      "Full panic. All lights on. No exits."
+    ];
+    const panicDescriptors = [
+      "Concern level: Mildly inconvenienced",
+      "Concern level: Professionally worried",
+      "Concern level: Dramatically invested",
+      "Concern level: Institutionally alarmed",
+      "Concern level: Existentially committed",
+      "Concern level: MAXIMUM OVERREACTION"
+    ];
+
+    function renderStats() {
+      const lvl = state.panicLevel;
+      if (elements.panicFill) elements.panicFill.style.width = (lvl / 5 * 100) + "%";
+      if (elements.panicLevelValue) elements.panicLevelValue.textContent = lvl;
+      if (elements.panicTone) elements.panicTone.textContent = panicTones[lvl] || panicTones[0];
+      if (elements.panicDescriptor) elements.panicDescriptor.textContent = panicDescriptors[lvl] || panicDescriptors[0];
+      if (elements.lastDirective) elements.lastDirective.textContent = state.lastDirective;
+      if (elements.totalNews) elements.totalNews.textContent = state.totalNewsGenerated;
+      if (elements.globalPanics) elements.globalPanics.textContent = state.globalPanics;
+      if (elements.calmCount) elements.calmCount.textContent = state.calmCount;
+      if (elements.crisisStreak) elements.crisisStreak.textContent = state.crisisStreak;
+      if (elements.urgencyBar) {
+        elements.urgencyBar.innerHTML = "";
+        for (let i = 0; i < 6; i++) {
+          const s = document.createElement("span");
+          if (i < lvl) s.classList.add("active");
+          elements.urgencyBar.appendChild(s);
+        }
+      }
+      elements.body.className = elements.body.className.replace(/panic-\d/g, "").trim();
+      if (lvl > 0) elements.body.classList.add("panic-" + lvl);
+      if (lvl >= 4) elements.body.classList.add("rage-mode");
+      else elements.body.classList.remove("rage-mode");
+      if (elements.historyList) {
+        elements.historyList.innerHTML = "";
+        state.lastHeadlines.forEach(function(h) {
+          const li = document.createElement("li");
+          li.textContent = h;
+          elements.historyList.appendChild(li);
+        });
+      }
+    }
+
+    function renderReactions(headline) {
+      if (!elements.reactionList) return;
+      const count = randomInt(3, 5);
+      const pool = reactionTemplates.slice();
+      const picked = [];
+      for (let i = 0; i < count && pool.length; i++) {
+        const idx = Math.floor(Math.random() * pool.length);
+        picked.push(pool.splice(idx, 1)[0]);
+      }
+      elements.reactionList.innerHTML = picked.map(function(r) { return "<li>" + r + "</li>"; }).join("");
+    }
+
+    function renderTicker() {
+      if (!elements.tickerTrack) return;
+      const base = [
+        "DEVELOPING: " + (state.lastHeadlines[0] || "Situation remains unclear, though very well lit"),
+        "ANALYSTS CONFIRM: concern is rising faster than context",
+        "UPDATE: nothing has changed, but we are covering it differently now",
+        "SOURCES SAY: the situation has entered a new phase of being a situation",
+        "BREAKING: experts are preparing remarks that will not help",
+        "LIVE: viewers are watching, which has made the event feel more significant"
+      ];
+      const all = base.concat(state.lastHeadlines.map(function(h) { return "PREVIOUSLY: " + h; }));
+      const doubled = all.concat(all);
+      elements.tickerTrack.innerHTML = doubled.map(function(t) { return "<span>" + t + "</span>"; }).join("");
+    }
+
+    function unlockAchievements() {
+      achievementCatalog.forEach(function(a) {
+        if (!state.unlockedAchievements.includes(a.id) && a.check(state)) {
+          state.unlockedAchievements.push(a.id);
+          setToast("Achievement unlocked: " + a.label);
+        }
+      });
+      renderAchievements();
+    }
+
+    function renderAchievements() {
+      if (!elements.achievementList) return;
+      elements.achievementList.innerHTML = achievementCatalog.map(function(a) {
+        const unlocked = state.unlockedAchievements.includes(a.id);
+        return "<li class=\"" + (unlocked ? "unlocked" : "") + "\">"
+          + "<strong>" + a.label + (unlocked ? " \u2713" : "") + "</strong><br>"
+          + "<span style=\"font-size:0.85rem;color:#94a5bc\">" + a.description + "</span>"
+          + "</li>";
+      }).join("");
+    }
+
+    // ── END MISSING FUNCTIONS ────────────────────────────────────────────
+
+    function bumpPanic(amount) {
+      state.panicLevel = Math.max(0, Math.min(5, state.panicLevel + amount));
+      if (amount < 0) state.crisisStreak = 0;
+      renderStats();
+      saveState();
+    }
+    function triggerShake() {
+      elements.body.classList.remove("shake");
+      void elements.body.offsetWidth;
+      elements.body.classList.add("shake");
+    }
+    function generateCommentary(panicLevel, headline) {
+      const tone = pick(commentaryByPanic[panicLevel]);
+      const suffixes = [
+        "We will continue to monitor this with more confidence than context.",
+        `For viewers just joining us, yes, the developing story is still "${headline.toLowerCase()}".`,
+        "Multiple people in the studio are now pointing at screens for emphasis."
+      ];
+      return `${tone} ${pick(suffixes)}`;
+    }
+    function generateFieldReporter(headline) {
+      const reporter = pick(reporterNames);
+      const location = pick(locations);
+      const message = formatTemplate(pick(fieldInterruptions), { reporter, location });
+      elements.reporterCard.innerHTML = `<strong>Field Reporter Interruptions</strong>${reporter} is ${location}, where "${headline}" has given nearby observers a deep sense of unnecessary purpose.`;
+      return `FIELD REPORTER: ${message}`;
+    }
+    function addHeadlineToHistory(headline) {
+      state.lastHeadlines.unshift(headline);
+      state.lastHeadlines = state.lastHeadlines.slice(0, 6);
+    }
+    // Main absurdity engine: build a trivial event, then inflate it to broadcast scale.
+    async function generateNews(options = {}) {
+      const randomRoll = Math.random();
+      let rareEvent = null;
+      let cumulative = 0;
+      for (const event of rareEvents) {
+        cumulative += event.chance;
+        if (randomRoll < cumulative) {
+          rareEvent = event;
+          break;
+        }
+      }
+
+      const levelForStory = options.forcePanicLevel ?? state.panicLevel;
+      let headline = "";
+      let subheadline = "";
+      let commentary = "";
+      let anchor = pick(anchors);
+
+      if (options.useAI) {
+        try {
+          const aiResult = await fetchAiNews(levelForStory);
+          headline = aiResult.headline?.trim() || "";
+          subheadline = aiResult.subheadline?.trim() || "";
+          commentary = aiResult.commentary?.trim() || "";
+          state.lastDirective = aiResult.directive?.trim() || state.lastDirective;
+          anchor = aiResult.anchor?.trim() || anchor;
+        } catch (error) {
+          console.warn("AI generation failed", error);
+          setToast("AI unavailable, falling back to local headline generation.");
+        }
+      }
+
+      if (!headline) {
+        if (rareEvent) {
+          headline = rareEvent.headline;
+          subheadline = rareEvent.subheadline;
+          commentary = rareEvent.commentary;
+          state.lastDirective = rareEvent.directive;
+        } else {
+          const subject = pick(subjects);
+          const action = pick(actions);
+          const drama = pick(dramaPhrases);
+          const intensityPrefixes = [
+            "",
+            "Developing: ",
+            "Live Update: ",
+            "National Alert: ",
+            "Breaking Escalation: ",
+            "Global Emergency: "
+          ];
+          headline = `${intensityPrefixes[levelForStory]}${subject} ${action} - ${drama}`;
+          subheadline = pick(subheadlineTemplates);
+          commentary = generateCommentary(levelForStory, headline);
+          state.lastDirective = [
+            "Maintaining studio seriousness.",
+            "Rolling secondary graphics.",
+            "Expanding panel discussion.",
+            "Requesting more dramatic b-roll.",
+            "Patching in foreign correspondents for scale.",
+            "Activating full panic package."
+          ][levelForStory];
+        }
+      }
+
+      state.totalNewsGenerated += 1;
+      state.crisisStreak += 1;
+      addHeadlineToHistory(headline);
+
+      elements.headline.textContent = headline;
+      elements.subheadline.textContent = subheadline;
+      elements.anchorName.textContent = anchor;
+      elements.commentary.textContent = commentary;
+      elements.fieldReporter.textContent = generateFieldReporter(headline);
+
+      renderReactions(headline);
+      renderTicker();
+      unlockAchievements();
+      renderStats();
+      saveState();
+
+      return { headline, subheadline, commentary };
+    }
+    async function escalateCrisis() {
+      bumpPanic(1);
+      await generateNews({ useAI: true });
+      triggerShake();
+      setToast("Crisis escalated. Several producers are now standing.");
+    }
+    function calmSituation() {
+      state.calmCount += 1;
+      state.lastDirective = "De-escalation music deployed with limited success.";
+      bumpPanic(-1);
+      elements.commentary.textContent = [
+        "Calmer voices are returning to the room, though the graphics remain emotionally invested.",
+        "The story is cooling, but a surprising amount of dramatic lighting is still active.",
+        "Order has been restored, if only because everyone became briefly tired."
+      ][Math.min(state.calmCount % 3, 2)];
+      elements.fieldReporter.textContent = "FIELD REPORTER: A measured silence has settled over the scene. Witnesses are relieved, but still strangely camera-ready.";
+      renderReactions("The situation is temporarily under control.");
+      unlockAchievements();
+      renderStats();
+      saveState();
+      setToast("Situation calmed. The studio has returned to dignified concern.");
+    }
+    async function triggerGlobalPanic() {
+      state.globalPanics += 1;
+      state.lastDirective = "Global panic package approved by the board.";
+      state.panicLevel = 5;
+      await generateNews({ forcePanicLevel: 5, useAI: true });
+      triggerShake();
+      renderStats();
+      saveState();
+      setToast("Global panic triggered. Maps are now red for atmosphere.");
+    }
+    async function shareHeadline() {
+      const headline = elements.headline.textContent;
+      const shareText = `NNN LIVE: ${headline}`;
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: "Nothing News Network", text: shareText });
+          setToast("Headline dispatched to the wider public sphere.");
+          return;
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(shareText);
+          setToast("Headline copied. Screenshot diplomacy may now begin.");
+          return;
+        }
+      } catch (error) {
+        console.warn("Share failed", error);
+      }
+      setToast("Sharing unavailable. The headline remains nationally important in spirit.");
+    }
+    function initializeHistory() {
+      renderTicker();
+      renderReactions(elements.headline.textContent);
+      renderStats();
+      if (state.lastHeadlines.length > 0) elements.headline.textContent = state.lastHeadlines[0];
+    }
+    function attachEvents() {
+      elements.generateBtn.addEventListener("click", async () => {
+        bumpPanic(1);
+        await generateNews({ useAI: true });
+        setToast("Fresh breaking news generated.");
+      });
+      elements.escalateBtn.addEventListener("click", escalateCrisis);
+      elements.calmBtn.addEventListener("click", calmSituation);
+      elements.panicBtn.addEventListener("click", triggerGlobalPanic);
+      elements.shareBtn.addEventListener("click", shareHeadline);
+    }
+    async function boot() {
+      loadState();
+      initializeHistory();
+      attachEvents();
+      updateClock();
+      updateViewers();
+      setInterval(updateClock, 1000);
+      setInterval(updateViewers, 4200);
+      if (state.lastHeadlines.length === 0) {
+        await generateNews({ forcePanicLevel: 0, useAI: true });
+      } else {
+        unlockAchievements();
+        renderAchievements();
+      }
+    }
+    boot();
+  </script>
+</body>
+</html>
