@@ -864,8 +864,11 @@ IMPORTANT: Make it absurdly specific with exact numbers/measurements, fake exper
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prompt: buildAIPrompt(level) })
         });
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`HTTP ${response.status}: ${text.substring(0, 200)}`);
+        }
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "AI generation failed");
         return parseAiJson(data.text ?? "");
       } catch (error) {
         console.warn("AI generation failed", error);
