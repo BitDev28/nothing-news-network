@@ -1,4 +1,4 @@
-# Nothing News Network
+#  Nothing News Network
 
 A playful AI-powered news generator that turns trivial events into absurd broadcast headlines.
 
